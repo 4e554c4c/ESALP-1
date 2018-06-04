@@ -16,8 +16,9 @@ use memory::{Frame, FrameAllocate, FrameDeallocate};
 pub struct TemporaryPage {
     /// The page itself.
     page: Page,
-    /// A temporary allocator.
-    pub allocator: TinyAllocator<[Option<Frame>; 3]>,
+    /// A temporary allocator. Four frames at most are needed to map or unmap
+    /// a page (for p3, p2, p1 and the page)
+    pub allocator: TinyAllocator<[Option<Frame>; 4]>,
 }
 
 impl TemporaryPage {
@@ -25,13 +26,12 @@ impl TemporaryPage {
     pub fn new<A>(page: Page, allocator: &mut A) -> TemporaryPage
         where A: FrameAllocate
     {
+        let mut f = || allocator.allocate_frame();
+        // only three pages will be required for mapping a page, but four may
+        // be required to unmap it
         TemporaryPage {
             page: page,
-            allocator: {
-                let mut alloc = TinyAllocator::new([None, None, None]);
-                alloc.fill(|| allocator.allocate_frame());
-                alloc
-            }
+            allocator: TinyAllocator::new([f(), f(), f(), None]),
         }
     }
 
@@ -56,6 +56,26 @@ impl TemporaryPage {
                            active_table: &mut ActivePageTable)
                            -> &mut Table<Level1> {
         unsafe { &mut *(self.map(frame, active_table) as *mut Table<Level1>) }
+    }
+
+    /// Unmap the table frame
+    ///
+    /// This will return all frames to the `TinyAllocator` except the frame
+    /// mapped to the `TemporaryPage`, which will be leaked.
+    ///
+    /// # Panics
+    /// The `TemporaryPage` must be mapped.
+    pub fn unmap_table_frame(&mut self, active_table: &mut ActivePageTable) {
+        let curr = Some(active_table.translate_page(self.page).unwrap());
+
+        self.unmap(active_table);
+
+        for f in self.allocator.0.as_mut().iter_mut() {
+            if *f == curr {
+                *f = None;
+                break;
+            }
+        }
     }
 
     /// This method consumes the `TemporaryPage` without leaking frames. The

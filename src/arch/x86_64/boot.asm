@@ -303,7 +303,6 @@ KEXIT:
 	jmp .loop
 
 section .rodata
-; TODO TSS <http://wiki.osdev.org/Task_State_Segment>
 GDT:
 	dq 0 ; zero entry
 .code equ $ - GDT

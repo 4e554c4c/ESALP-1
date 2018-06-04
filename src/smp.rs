@@ -22,9 +22,16 @@ macro_rules! offset_of {
         &(*(0 as *const $ty)).$field as *const _ as usize
     }
 }
-macro_rules! read_gs_offset {
+macro_rules! read_gs_offset64 {
     ($offset:expr) => {{
         let ret: u64;
+        asm!("mov $0, gs:$1" : "=r"(ret) : "i"($offset) : "memory" : "intel", "volatile");
+        ret
+    }}
+}
+macro_rules! read_gs_offset32 {
+    ($offset:expr) => {{
+        let ret: u32;
         asm!("mov $0, gs:$1" : "=r"(ret) : "i"($offset) : "memory" : "intel", "volatile");
         ret
     }}
@@ -38,7 +45,7 @@ static ID: AtomicUsize = ATOMIC_USIZE_INIT;
 #[allow(dead_code)]
 pub struct CpuLocal {
     direct: NonNull<CpuLocal>,
-    pub id: usize,
+    id: u32,
     pub sched: IrqLock<Scheduler>,
 }
 
@@ -46,7 +53,7 @@ impl CpuLocal {
     fn new() -> CpuLocal {
         CpuLocal {
             direct: NonNull::dangling(),
-            id: ID.fetch_add(1, Ordering::Relaxed),
+            id: ID.fetch_add(1, Ordering::Relaxed) as u32,
             sched: IrqLock::new(Scheduler::new()),
         }
     }
@@ -66,12 +73,12 @@ impl CpuLocal {
 
 pub fn current() -> &'static CpuLocal {
     unsafe {
-        &*(read_gs_offset!(offset_of!(CpuLocal, direct)) as *const CpuLocal)
+        &*(read_gs_offset64!(offset_of!(CpuLocal, direct)) as *const CpuLocal)
     }
 }
 
 pub fn cpu_id() -> u32 {
     unsafe {
-        read_gs_offset!(offset_of!(CpuLocal, id)) as u32
+        read_gs_offset32!(offset_of!(CpuLocal, id)) as u32
     }
 }

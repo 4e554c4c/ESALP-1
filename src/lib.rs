@@ -142,7 +142,6 @@ pub extern "C" fn _Unwind_Resume() -> ! {
 #[no_mangle]
 pub extern "C" fn eh_personality() {}
 
-
 /// Runs when the allocator is out of memory
 #[lang = "oom"]
 #[no_mangle]

@@ -130,22 +130,59 @@ impl Mapper {
     {
         assert!(self.translate(page.start_address()).is_some());
 
-        let p1 = self.p4_mut()
-            .next_table_mut(page.p4_index())
-            .and_then(|p3| p3.next_table_mut(page.p3_index()))
-            .and_then(|p2| p2.next_table_mut(page.p2_index()))
-            .expect("Mapping code does not support huge pages");
+        {
+            // Deallocate and free the page
+            let p1 = self.p4_mut()
+                .next_table_mut(page.p4_index())
+                .and_then(|p3| p3.next_table_mut(page.p3_index()))
+                .and_then(|p2| p2.next_table_mut(page.p2_index()))
+                .expect("Mapping code does not support huge pages");
 
-        let frame = p1[page.p1_index()].pointed_frame().unwrap();
-        p1[page.p1_index()].set_unused();
+            let frame = p1[page.p1_index()].pointed_frame().unwrap();
+            p1[page.p1_index()].set_unused();
 
-        // Even after we update this value in memory,
-        // it is still cached in the TLB in the CPU.
-        use x86_64::VirtualAddress;
-        use x86_64::instructions::tlb;
-        tlb::flush(VirtualAddress(page.start_address()));
+            // Even after we update this value in memory,
+            // it is still cached in the TLB in the CPU.
+            use x86_64::VirtualAddress;
+            use x86_64::instructions::tlb;
+            tlb::flush(VirtualAddress(page.start_address()));
 
-        // TODO Free p(1,2,3) table if empty
+            // TODO Free p(1,2,3) table if empty
+            allocator.deallocate_frame(frame);
+            if !p1.is_empty() {
+                return
+            }
+        }
+        {  // Free p1
+            let p2 = self.p4_mut().next_table_mut(page.p4_index())
+                .and_then(|p3| p3.next_table_mut(page.p3_index()))
+                .expect("Mapping code does not support huge pages");
+
+            let frame = p2[page.p2_index()].pointed_frame().unwrap();
+            p2[page.p2_index()].set_unused();
+
+            allocator.deallocate_frame(frame);
+            if !p2.is_empty() {
+                return;
+            }
+        }
+        {  // Free p2
+            let p3 = self.p4_mut().next_table_mut(page.p4_index())
+                .expect("Mapping code does not support huge pages");
+
+            let frame = p3[page.p3_index()].pointed_frame().unwrap();
+            p3[page.p3_index()].set_unused();
+
+            allocator.deallocate_frame(frame);
+            if !p3.is_empty() {
+                return;
+            }
+        }
+        // Free p3
+        let p4 = self.p4_mut();
+
+        let frame = p4[page.p4_index()].pointed_frame().unwrap();
+        p4[page.p4_index()].set_unused();
         allocator.deallocate_frame(frame);
     }
 }

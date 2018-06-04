@@ -37,6 +37,16 @@ pub struct Table<L: TableLevel> {
 impl<L> Table<L>
     where L: TableLevel
 {
+    pub fn is_empty(&self) -> bool {
+        // perhaps use memcmp / slice::eq() here?
+        for entry in self.entries.iter() {
+            if !entry.is_unused() {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Sets each page table entry to unused
     pub fn zero(&mut self) {
         for entry in self.entries.iter_mut() {

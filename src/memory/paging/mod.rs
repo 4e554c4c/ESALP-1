@@ -247,8 +247,7 @@ impl ActivePageTable {
             tlb::flush_all();
         }
 
-        temporary_page.unmap(self);
-        temporary_page.allocator.flush(|_| {});
+        temporary_page.unmap_table_frame(self);
     }
 
     /// Activates the `InactivePageTable` given.
@@ -290,10 +289,7 @@ impl InactivePageTable {
             table[510].set(frame.clone(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
         }
 
-        temporary_page.unmap(active_table);
-        // At this point, the p4 table still remains in the allocator, flush it
-        // to make sure that the `InactivePageTable` is the only owner
-        temporary_page.allocator.flush(|_| {});
+        temporary_page.unmap_table_frame(active_table);
 
         InactivePageTable { p4_frame: frame }
     }
