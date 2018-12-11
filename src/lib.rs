@@ -13,6 +13,8 @@
 #![feature(alloc)]
 #![feature(const_fn)]
 #![feature(associated_type_defaults)]
+// const/safer version of `uninit`
+#![feature(maybe_uninit)]
 #![feature(asm, naked_functions, core_intrinsics)]
 #![feature(abi_x86_interrupt)]
 #![feature(ptr_internals)]

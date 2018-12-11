@@ -78,7 +78,7 @@ bitflags! {
 impl EntryFlags {
     /// Returns the `EntryFlags` that are required for the given `ElfSection`'s
     /// permissions
-    pub fn from_elf_section_flags(section: &ElfSection) -> EntryFlags {
+    pub fn from_elf_section_flags(section: &ElfSection) -> Self {
         use multiboot2::{ELF_SECTION_ALLOCATED, ELF_SECTION_WRITABLE, ELF_SECTION_EXECUTABLE};
 
         let mut flags = Self::empty();
@@ -91,6 +91,20 @@ impl EntryFlags {
         }
         if !section.flags().contains(ELF_SECTION_EXECUTABLE) {
             flags |= Self::NO_EXECUTE;
+        }
+
+        flags
+    }
+
+    use memory::vmm::Protection;
+    pub fn from_protection(protection: Protection) -> Self
+    {
+        // All kernel sections are global
+        let mut flags = Self::GLOBAL;
+        if !region.protection.contains(Protection::EXECUTABLE) {
+            flags |= Self::NO_EXECUTE;
+        } if region.protection.contains(Protection::WRITABLE) {
+            flags |= Self::WRITABLE;
         }
 
         flags
