@@ -36,4 +36,5 @@ script:
     - make
     - make clean
     - make test | ./script/split_test.pl
+    - cat test/1.t
     - ~/.local/bin/tappy test
