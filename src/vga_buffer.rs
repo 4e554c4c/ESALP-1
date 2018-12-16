@@ -47,6 +47,19 @@ pub fn clear_screen() {
         println!("{}",::core::str::from_utf8_unchecked(&[b'\n'; BUFFER_HEIGHT]));
     }
 }
+/// Disable the flashing vga cursor
+pub fn disable_cursor() {
+    let _guard = WRITER.lock();
+    use cpuio::port::Port;
+    unsafe {
+        let mut p: Port<u8>;
+        p = Port::new(0x3D4);
+        p.write(0xA);
+        p = Port::new(0x3D5);
+        p.write(0x20);
+    }
+}
+
 
 /// Changes the color of the `WRITER` struct. This may produce
 /// unpredictable behaviour if `bg` has the bright bit (bit 3)

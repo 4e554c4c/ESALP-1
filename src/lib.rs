@@ -69,6 +69,7 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn rust_main(multiboot_info_address: usize) -> ! {
     vga_buffer::clear_screen();
+    vga_buffer::disable_cursor();
     println!("Hello Rust log \x01");
 
     let boot_info = unsafe { multiboot2::load(multiboot_info_address) };
